@@ -4,6 +4,7 @@ import { Button, Pill } from './components/Ui';
 import { HomePage } from './pages/HomePage';
 import { RoomPage } from './pages/RoomPage';
 import { DebugPage } from './pages/DebugPage';
+import { Footer } from './components/Footer';
 
 function Shell() {
   const navigate = useNavigate();
@@ -39,6 +40,8 @@ function Shell() {
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </main>
+
+      <Footer />
     </div>
   );
 }

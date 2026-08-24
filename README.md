@@ -1,30 +1,56 @@
 # Lügen
 
-Kartenspiel "Lügen" (Cheat/BS). Rust/Axum-Backend + React/Vite-Frontend, als eine Binary ausgeliefert. Regeln: [`rules.md`](rules.md).
+Web-Version des Kartenspiels **Lügen** (auch bekannt als "Cheat" / "BS"): Karten verdeckt ablegen, den Wert behaupten, bluffen und andere anzweifeln.
+
+Das Projekt besteht aus einem Rust-Backend (Axum, REST + WebSocket) und einem React/Vite-Frontend. Das fertig gebaute Frontend wird zur Kompilierzeit in die Rust-Binary eingebettet – am Ende gibt es eine einzige ausführbare Datei, die sowohl die Web-Oberfläche als auch die API ausliefert.
+
+> Spielregeln stehen in [`rules.md`](rules.md).
+
+---
 
 ## Voraussetzungen
 
-Rust (stable) und Node.js 18+.
+* **Rust** (stable, über [rustup](https://rustup.rs))
+* **Node.js** 18+ mit npm
 
-## Start
+---
+
+## 🚀 Start
+
+Das Repo ist als npm-Workspace organisiert (Root-`package.json` + `frontend/`). Ein `npm install` installiert alles – Root- und Frontend-Abhängigkeiten.
 
 ```bash
 npm install
-npm run dev      # Backend + Frontend zusammen -> http://localhost:5173
+npm run dev
 ```
 
-Detached (Hintergrund, Terminal kann zu):
+* Startet Backend (`cargo run -- --debug`, Port `3000`) und Frontend-Devserver (Vite, Port `5173`, Live-Reload, proxyt `/api` automatisch zum Backend) gemeinsam in einem Terminal.
+* App danach unter **http://localhost:5173** öffnen.
+* `Strg+C` beendet beide Prozesse zusammen.
 
-```bash
-./scripts/start.sh   # macOS/Linux
-./scripts/stop.sh
+Funktioniert identisch unter Windows, macOS und Linux.
 
-.\scripts\start.ps1  # Windows
-.\scripts\stop.ps1
-```
+---
 
-Production-Build (eine Binary, http://localhost:3000):
+## Production-Build
 
 ```bash
 npm start
 ```
+
+Baut das Frontend, kompiliert die Rust-Release-Binary und startet sie direkt. Web-Oberfläche und API sind danach unter **http://localhost:3000** erreichbar.
+
+Nur das Frontend neu bauen (nötig nach Änderungen in `frontend/src`, bevor `cargo build`/`cargo run` es wieder einbettet):
+
+```bash
+npm run build --workspace frontend
+```
+
+---
+
+## 🗂️ Struktur
+
+* **`src/`** – Rust-Backend (Axum-Server, Spiellogik, WebSocket-/REST-API)
+* **`frontend/`** – React + Vite Frontend
+* **`frontend/dist/`** – Gebautes Frontend, wird in die Binary eingebettet
+* **`rules.md`** – Spielregeln
