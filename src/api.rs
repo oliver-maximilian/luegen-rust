@@ -1,17 +1,32 @@
-use axum::{
-    Form, Json, Router, extract::{State, ws::{Message, WebSocket, WebSocketUpgrade}}, http::StatusCode, http::header, http::Uri, response::IntoResponse, response::Response, body::Body, routing::{get, post}
-};
 use axum::extract::Query;
+use axum::{
+    Form, Json, Router,
+    body::Body,
+    extract::{
+        State,
+        ws::{Message, WebSocket, WebSocketUpgrade},
+    },
+    http::StatusCode,
+    http::Uri,
+    http::header,
+    response::IntoResponse,
+    response::Response,
+    routing::{get, post},
+};
 use tokio::sync::broadcast;
 
-use serde_json::{from_str, to_string};
+use crate::api_model::{
+    ApiError, AppState, ConnectGameMessage, CreateGameMessage, CreateGameResponse, DebugGame,
+    DebugGameResponse, DebugPlayer, JoinGameMessage, JoinGameResponse, StartGameMessage,
+    StopGameMessage, WsClientMessage, WsServerMessage,
+};
 use crate::model::{Game, GameStatus, GameView};
-use crate::api_model::{ApiError, AppState, WsClientMessage, WsServerMessage, ConnectGameMessage, CreateGameMessage, CreateGameResponse, JoinGameMessage, JoinGameResponse, StartGameMessage, StopGameMessage, DebugGame, DebugGameResponse, DebugPlayer};
+use serde_json::{from_str, to_string};
 use uuid::Uuid;
 
-use dashmap::{DashMap, };
-use std::{sync::Arc};
+use dashmap::DashMap;
 use rust_embed::RustEmbed;
+use std::sync::Arc;
 
 #[derive(RustEmbed)]
 #[folder = "frontend/dist/"]
@@ -22,8 +37,7 @@ async fn frontend_handler(uri: Uri) -> impl IntoResponse {
 
     serve_embedded(path).unwrap_or_else(|| {
         // SPA-Fallback: unbekannte Pfade -> index.html (React-Router etc.)
-        serve_embedded("index.html")
-            .unwrap_or_else(|| StatusCode::NOT_FOUND.into_response())
+        serve_embedded("index.html").unwrap_or_else(|| StatusCode::NOT_FOUND.into_response())
     })
 }
 fn serve_embedded(path: &str) -> Option<Response> {
@@ -50,27 +64,27 @@ fn create_router(state: Arc<AppState>, debug: bool) -> Router {
         router = router.route("/api/debug/game", get(debug_game_handler));
     }
 
-    router
-        .fallback(frontend_handler)
-        .with_state(state)
+    router.fallback(frontend_handler).with_state(state)
 }
 
 async fn ws_handler(
     ws: WebSocketUpgrade,
     Query(data): Query<ConnectGameMessage>,
     State(state): State<Arc<AppState>>,
-) -> impl  IntoResponse {
-
-    let tx = state.channels
-    .entry(data.game_id.clone())
-    .or_insert_with(|| broadcast::channel(100).0)
-    .clone();
+) -> impl IntoResponse {
+    let tx = state
+        .channels
+        .entry(data.game_id.clone())
+        .or_insert_with(|| broadcast::channel(100).0)
+        .clone();
 
     ws.on_upgrade(move |socket| handle_socket(socket, tx, data.game_id, data.player_id, state))
 }
 
-async fn create_game_handler(State(state): State<Arc<AppState>>, Form(data): Form<CreateGameMessage>) -> Result<Json<CreateGameResponse>,ApiError> { 
-
+async fn create_game_handler(
+    State(state): State<Arc<AppState>>,
+    Form(data): Form<CreateGameMessage>,
+) -> Result<Json<CreateGameResponse>, ApiError> {
     for game in state.games.iter() {
         if game.value().name == data.game_name {
             return Err(ApiError::GameNameAlreadyExists);
@@ -83,17 +97,18 @@ async fn create_game_handler(State(state): State<Arc<AppState>>, Form(data): For
     let player_id = game.players[0].id.clone();
 
     state.games.insert(game_id.to_string(), game);
-    
+
     let response = CreateGameResponse {
         player_id: player_id.to_string(),
-        game_id: game_id.to_string()
+        game_id: game_id.to_string(),
     };
     Ok(Json(response))
 }
 
-async fn join_game_handler(State(state): State<Arc<AppState>>, Form(data): Form<JoinGameMessage>,) -> Result<Json<JoinGameResponse>, ApiError> {
-
-
+async fn join_game_handler(
+    State(state): State<Arc<AppState>>,
+    Form(data): Form<JoinGameMessage>,
+) -> Result<Json<JoinGameResponse>, ApiError> {
     let game_id = state
         .games
         .iter()
@@ -110,7 +125,8 @@ async fn join_game_handler(State(state): State<Arc<AppState>>, Form(data): Form<
         return Err(ApiError::GameRunning);
     }
 
-    if game_instance.players.len() >= game_instance.max_players.try_into().unwrap() { // hoffentlich kommt hier keine panic
+    if game_instance.players.len() >= game_instance.max_players.try_into().unwrap() {
+        // hoffentlich kommt hier keine panic
         return Err(ApiError::LobbyFull);
     }
 
@@ -122,27 +138,23 @@ async fn join_game_handler(State(state): State<Arc<AppState>>, Form(data): Form<
         let _ = tx.send(game_id.clone());
     }
 
-    Ok(Json(JoinGameResponse {
-        player_id,
-        game_id,
-    }))
+    Ok(Json(JoinGameResponse { player_id, game_id }))
 }
 
-async fn start_game_handler(State(state): State<Arc<AppState>>, Form(data): Form<StartGameMessage>) -> Result<StatusCode, ApiError> {
-
+async fn start_game_handler(
+    State(state): State<Arc<AppState>>,
+    Form(data): Form<StartGameMessage>,
+) -> Result<StatusCode, ApiError> {
     if !state.games.contains_key(&data.game_id) {
         return Err(ApiError::GameNotFound);
     }
 
-
-
     if let Some(mut game_instance) = state.games.get_mut(&data.game_id) {
-
         if game_instance.status == GameStatus::InProgress {
             return Err(ApiError::GameRunning);
         }
         if game_instance.players.len() == 1 {
-            return Err(ApiError::OnlyOnePlayer)
+            return Err(ApiError::OnlyOnePlayer);
         }
 
         game_instance.start();
@@ -152,13 +164,16 @@ async fn start_game_handler(State(state): State<Arc<AppState>>, Form(data): Form
         }
     }
 
-
-
     return Ok(StatusCode::OK);
 }
-async fn stop_game_handler(State(state): State<Arc<AppState>>, Form(data): Form<StopGameMessage>) -> Result<StatusCode, ApiError> {
-
-    let mut game_instance = state.games.get_mut(&data.game_id).ok_or(ApiError::GameNotFound)?;
+async fn stop_game_handler(
+    State(state): State<Arc<AppState>>,
+    Form(data): Form<StopGameMessage>,
+) -> Result<StatusCode, ApiError> {
+    let mut game_instance = state
+        .games
+        .get_mut(&data.game_id)
+        .ok_or(ApiError::GameNotFound)?;
 
     // if game_instance.players[0].id !=
     let player_id = match Uuid::parse_str(&data.player_id) {
@@ -183,9 +198,8 @@ async fn stop_game_handler(State(state): State<Arc<AppState>>, Form(data): Form<
 }
 
 async fn debug_game_handler(
-    State(state): State<Arc<AppState>>
+    State(state): State<Arc<AppState>>,
 ) -> Result<Json<DebugGameResponse>, ApiError> {
-
     let mut games: Vec<DebugGame> = Vec::new();
 
     for game_entry in &state.games {
@@ -210,7 +224,7 @@ async fn debug_game_handler(
             name: game_name,
             id: game_id,
             players,
-            status: game_status
+            status: game_status,
         });
     }
 
@@ -234,14 +248,21 @@ async fn handle_socket(
         }
     };
 
-    let initial_view = state.games.get_mut(&game_id)
+    let initial_view = state
+        .games
+        .get_mut(&game_id)
         .map(|mut g| g.get_player_gameview(player_id));
 
     if let Some(view) = initial_view {
         send_message(&mut socket, None, false, Some(view)).await;
-    }
-    else {
-        send_message(&mut socket, Some(String::from("Game not Found")), false, None).await;
+    } else {
+        send_message(
+            &mut socket,
+            Some(String::from("Game not Found")),
+            false,
+            None,
+        )
+        .await;
     }
 
     loop {
@@ -318,7 +339,13 @@ async fn handle_socket(
     }
 }
 
-async fn send_message(socket: &mut WebSocket, msg: Option<String>, is_error: bool, gameview: Option<GameView>) { // vllt wären hier 2 funktionen für fehler und normal besser
+async fn send_message(
+    socket: &mut WebSocket,
+    msg: Option<String>,
+    is_error: bool,
+    gameview: Option<GameView>,
+) {
+    // vllt wären hier 2 funktionen für fehler und normal besser
     if is_error {
         if let Some(message) = msg {
             match to_string(&WsServerMessage::Error { message: message }) {
@@ -330,8 +357,7 @@ async fn send_message(socket: &mut WebSocket, msg: Option<String>, is_error: boo
                 }
             }
         }
-    } 
-    else if let Some(game) = gameview {
+    } else if let Some(game) = gameview {
         match to_string(&WsServerMessage::StateUpdate { gameview: game }) {
             Ok(json) => {
                 let _ = socket.send(Message::Text(json.into())).await;
@@ -346,7 +372,10 @@ async fn send_message(socket: &mut WebSocket, msg: Option<String>, is_error: boo
 pub async fn start_server(debug: bool) {
     let channel_dashmap: DashMap<String, broadcast::Sender<String>> = DashMap::new();
     let game_dashmap: DashMap<String, crate::model::Game> = DashMap::new();
-    let state: AppState = AppState { channels: channel_dashmap, games: game_dashmap };
+    let state: AppState = AppState {
+        channels: channel_dashmap,
+        games: game_dashmap,
+    };
 
     let arc_state: Arc<AppState> = Arc::new(state);
 

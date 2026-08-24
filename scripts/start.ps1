@@ -1,10 +1,10 @@
 # Startet Backend (cargo run --debug) und Frontend (vite dev server) im Hintergrund (detached).
-# Terminal kann danach geschlossen werden. Beenden mit .\stop.ps1
+# Terminal kann danach geschlossen werden. Beenden mit .\scripts\stop.ps1
 $ErrorActionPreference = "Stop"
-Set-Location -Path $PSScriptRoot
+Set-Location -Path (Split-Path $PSScriptRoot -Parent)
 
 if ((Test-Path ".run/backend.pid") -or (Test-Path ".run/frontend.pid")) {
-    Write-Error "Es läuft bereits etwas (.run\*.pid vorhanden). Erst .\stop.ps1 ausführen."
+    Write-Error "Es läuft bereits etwas (.run\*.pid vorhanden). Erst .\scripts\stop.ps1 ausführen."
     exit 1
 }
 
@@ -31,4 +31,4 @@ Write-Host ""
 Write-Host "Backend:  http://localhost:3000   (Log: .run\backend.log)"
 Write-Host "Frontend: http://localhost:5173   (Log: .run\frontend.log)"
 Write-Host ""
-Write-Host "Laeuft im Hintergrund. Beenden mit: .\stop.ps1"
+Write-Host "Laeuft im Hintergrund. Beenden mit: .\scripts\stop.ps1"

@@ -1,5 +1,5 @@
 # Beendet, was start.ps1 im Hintergrund gestartet hat.
-Set-Location -Path $PSScriptRoot
+Set-Location -Path (Split-Path $PSScriptRoot -Parent)
 
 function Stop-One([string]$Name) {
     $pidFile = ".run/$Name.pid"

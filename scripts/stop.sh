@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Beendet, was start.sh im Hintergrund gestartet hat.
-cd "$(dirname "${BASH_SOURCE[0]}")"
+cd "$(dirname "${BASH_SOURCE[0]}")/.."
 
 stop_one() {
   local name="$1" pidfile=".run/$1.pid"

@@ -1,13 +1,14 @@
 use axum::{
-    Json, http::{StatusCode}, response::{IntoResponse, Response}
+    Json,
+    http::StatusCode,
+    response::{IntoResponse, Response},
 };
 use tokio::sync::broadcast;
 
-use serde::{Deserialize, Serialize, };
-use crate::model::{Card, GameStatus, GameView,Rank};
+use crate::model::{Card, GameStatus, GameView, Rank};
+use serde::{Deserialize, Serialize};
 
-use dashmap::{DashMap, };
-
+use dashmap::DashMap;
 
 pub enum ApiError {
     GameNotFound,
@@ -60,27 +61,27 @@ pub struct CreateGameMessage {
 #[derive(Serialize)]
 pub struct CreateGameResponse {
     pub player_id: String,
-    pub game_id: String
+    pub game_id: String,
 }
 
 #[derive(Debug, Deserialize)]
 pub struct JoinGameMessage {
     pub player_name: String,
-    pub game_name: String
+    pub game_name: String,
 }
 #[derive(Serialize)]
 pub struct JoinGameResponse {
     pub player_id: String,
-    pub game_id: String
+    pub game_id: String,
 }
 #[derive(Debug, Deserialize)]
 pub struct StartGameMessage {
-    pub game_id: String
+    pub game_id: String,
 }
 #[derive(Debug, Deserialize)]
 pub struct StopGameMessage {
     pub game_id: String,
-    pub player_id: String
+    pub player_id: String,
 }
 #[derive(Serialize)]
 pub struct DebugGameResponse {
@@ -99,7 +100,7 @@ pub struct DebugGame {
 pub struct DebugPlayer {
     pub id: String,
     pub name: String,
-    pub cards: Vec<Card>
+    pub cards: Vec<Card>,
 }
 #[derive(Deserialize)]
 pub struct ConnectGameMessage {
@@ -109,5 +110,5 @@ pub struct ConnectGameMessage {
 
 pub struct AppState {
     pub channels: DashMap<String, broadcast::Sender<String>>,
-    pub games: DashMap<String, crate::model::Game>
+    pub games: DashMap<String, crate::model::Game>,
 }
