@@ -40,7 +40,7 @@ npm start
 
 Baut das Frontend, kompiliert die Rust-Release-Binary und startet sie direkt. Web-Oberfläche und API sind danach unter **http://localhost:3000** erreichbar.
 
-Nur das Frontend neu bauen (nötig nach Änderungen in `frontend/src`, bevor `cargo build`/`cargo run` es wieder einbettet):
+Nur das Frontend bauen (nötig vor jedem `cargo build`/`cargo run`, da `frontend/dist` nicht im Repo liegt, sondern lokal erzeugt werden muss):
 
 ```bash
 npm run build --workspace frontend
@@ -52,5 +52,5 @@ npm run build --workspace frontend
 
 * **`src/`** – Rust-Backend (Axum-Server, Spiellogik, WebSocket-/REST-API)
 * **`frontend/`** – React + Vite Frontend
-* **`frontend/dist/`** – Gebautes Frontend, wird in die Binary eingebettet
+* **`frontend/dist/`** – Gebautes Frontend, wird in die Binary eingebettet (generiert, nicht im Repo)
 * **`rules.md`** – Spielregeln

@@ -6,6 +6,7 @@
     "frontend"
   ],
   "scripts": {
+    "predev": "npm run build --workspace frontend",
     "dev": "concurrently -k -n backend,frontend -c blue,green \"cargo run -- --debug\" \"npm run dev --workspace frontend\"",
     "build": "npm run build --workspace frontend && cargo build --release",
     "start": "npm run build && cargo run --release"
