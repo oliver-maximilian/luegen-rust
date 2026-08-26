@@ -1,7 +1,7 @@
 mod api;
+mod api_model;
 mod game;
 mod model;
-mod api_model;
 use clap::Parser;
 
 #[derive(Parser)]
@@ -15,11 +15,12 @@ struct Args {
 #[tokio::main]
 async fn main() {
     let args = Args::parse();
-    
+
     if !args.debug {
-        println!("Lügen Webserver ohne Debug funktion gestartet.\nFür Debug die .exe mit --debug ausführen")
-    }
-    else {
+        println!(
+            "Lügen Webserver ohne Debug funktion gestartet.\nFür Debug die .exe mit --debug ausführen"
+        )
+    } else {
         println!("Lügen Webserver mit Debug funktion gestartet")
     }
 

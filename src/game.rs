@@ -1,42 +1,52 @@
-use crate::model::{Card, DoubtOutcome, Game, GameError, GameStatus, GameView, Player, PlayerPublicInfo, Rank, StackPlay, Suit};
-use uuid::{Uuid};
+use crate::model::{
+    Card, DoubtOutcome, Game, GameError, GameStatus, GameView, Player, PlayerPublicInfo, Rank,
+    StackPlay, Suit,
+};
 use rand::Rng;
+use uuid::Uuid;
 
-impl Game{
-    
-    pub fn new(host_name: String, game_name: String, max_players: u32,) -> Self {
-        
+impl Game {
+    pub fn new(host_name: String, game_name: String, max_players: u32) -> Self {
         let players: Vec<Player> = Vec::new();
 
         let game_center_stack: Vec<StackPlay> = Vec::new();
 
         let game_status = GameStatus::WaitingForPlayers;
 
-        let mut game: Game = Game { id: Uuid::new_v4(), name: game_name, players, current_turn_index: 0, center_stack: game_center_stack, current_claim: None, status: game_status, max_players: max_players};
+        let mut game: Game = Game {
+            id: Uuid::new_v4(),
+            name: game_name,
+            players,
+            current_turn_index: 0,
+            center_stack: game_center_stack,
+            current_claim: None,
+            status: game_status,
+            max_players: max_players,
+        };
 
-        
         if let Err(err) = game.add_player(host_name) {
             eprintln!("{:?}", err)
         }
 
         game
-    
     }
 
     pub fn add_player(&mut self, player_name: String) -> Result<String, GameError> {
-        
-        if self.players.len() >= self.max_players.try_into().unwrap() { // hoffentlich crasht hier .unwrap nicht
+        if self.players.len() >= self.max_players.try_into().unwrap() {
+            // hoffentlich crasht hier .unwrap nicht
             Err(GameError::MaxPlayersReached)
-        }
-        else {
+        } else {
             let player_id = Uuid::new_v4();
-            self.players.push(Player { id: player_id, name: player_name, hand: Vec::new() });
+            self.players.push(Player {
+                id: player_id,
+                name: player_name,
+                hand: Vec::new(),
+            });
             Ok(player_id.to_string())
         }
     }
-    
-    pub fn start(&mut self) {
 
+    pub fn start(&mut self) {
         for player in &mut self.players {
             player.hand.clear();
         }
@@ -64,9 +74,12 @@ impl Game{
         self.status = GameStatus::InProgress;
     }
 
-    pub fn play_cards(&mut self, player_id: &Uuid, cards: Vec<Card>, claim: Rank) -> Result<(), GameError> {
-        
-
+    pub fn play_cards(
+        &mut self,
+        player_id: &Uuid,
+        cards: Vec<Card>,
+        claim: Rank,
+    ) -> Result<(), GameError> {
         if self.status != GameStatus::InProgress {
             return Err(GameError::GameAlreadyFinished);
         }
@@ -76,11 +89,11 @@ impl Game{
         }
 
         if self.players[self.current_turn_index].id != *player_id {
-                return Err(GameError::NotYourTurn);
+            return Err(GameError::NotYourTurn);
         }
 
         //idk ob man das behalten muss aber nen ass claimen macht halt keinen sinn
-        if claim == Rank::Ace{
+        if claim == Rank::Ace {
             return Err(GameError::InvalidPlay);
         }
 
@@ -88,28 +101,23 @@ impl Game{
             if current != claim {
                 return Err(GameError::InvalidClaim); // claim passt net
             }
-        } 
-        else {
+        } else {
             self.current_claim = Some(claim);
         }
-
-
 
         let player = &mut self.players[self.current_turn_index];
         let mut temp_hand = player.hand.clone();
 
-
         // Prüft ob der spieler die Karten die er spielen möchte überhaupt auf der Hand hat
-        for card in &cards {        
+        for card in &cards {
             // idk was hier passiert das so ki bullshit, klappt aber hoffentlich
             if let Some(index) = temp_hand.iter().position(|c| c == card) {
                 temp_hand.remove(index);
-            } 
-            else {
+            } else {
                 return Err(GameError::InvalidPlay);
             }
         }
-        
+
         player.hand = temp_hand;
 
         let play = StackPlay {
@@ -117,13 +125,12 @@ impl Game{
             cards: cards,
             claim: claim,
         };
-    
-        self.center_stack.push(play);
 
+        self.center_stack.push(play);
 
         loop {
             self.current_turn_index = (self.current_turn_index + 1) % self.players.len();
-            
+
             // Wenn der Spieler an diesem Index noch Karten hat, ist er dran!
             if !self.players[self.current_turn_index].hand.is_empty() {
                 break;
@@ -135,7 +142,6 @@ impl Game{
     }
 
     pub fn doubt(&mut self, player_id: &Uuid) -> Result<DoubtOutcome, GameError> {
-
         if self.status != GameStatus::InProgress {
             return Err(GameError::GameAlreadyFinished);
         }
@@ -149,17 +155,18 @@ impl Game{
             return Err(GameError::InvalidPlay);
         }
 
-        let last_stack = self.center_stack.last().unwrap(); 
+        let last_stack = self.center_stack.last().unwrap();
 
         // 2. Die ID des wahren Übeltäters auslesen
         // Wir klonen die ID, damit wir gleich danach den center_stack leeren (drain) können
         let last_player_id = last_stack.player_id.clone();
 
         // 3. Den Index dieses Spielers in unserer Liste finden
-        let last_player_index = self.players
+        let last_player_index = self
+            .players
             .iter()
             .position(|p| p.id == last_player_id)
-            .unwrap(); 
+            .unwrap();
 
         let mut is_lie = false;
 
@@ -184,33 +191,32 @@ impl Game{
 
         let mut all_cards = Vec::new();
         // drain(..) leert den gesamten center_stack und gibt Karten zurück
-        for play in self.center_stack.drain(..) { 
+        for play in self.center_stack.drain(..) {
             all_cards.extend(play.cards);
         }
 
         self.players[loser_index].hand.extend(all_cards);
 
         self.current_claim = None;
-        
-        // Verlierer fängt nächste Runde an
-        self.current_turn_index = loser_index; 
 
-        let loser_id = self.players[loser_index].id.clone(); 
-        let has_four_aces = self.check_for_four_aces(&loser_id); 
-        
+        // Verlierer fängt nächste Runde an
+        self.current_turn_index = loser_index;
+
+        let loser_id = self.players[loser_index].id.clone();
+        let has_four_aces = self.check_for_four_aces(&loser_id);
+
         if has_four_aces {
             self.status = GameStatus::LostByAces { loser_id };
-            return Ok(outcome); 
+            return Ok(outcome);
         }
-        
+
         self.check_win_condition();
 
         Ok(outcome)
     }
-        
+
     fn check_for_four_aces(&self, player_id: &Uuid) -> bool {
         for player in &self.players {
-            
             if &player.id == player_id {
                 let mut ace_count = 0;
 
@@ -247,7 +253,6 @@ impl Game{
     }
 
     pub fn get_player_gameview(&mut self, player_id: Uuid) -> GameView {
-
         let mut hand: Vec<Card> = Vec::new();
 
         let mut player_public_info: Vec<PlayerPublicInfo> = Vec::new();
@@ -255,11 +260,23 @@ impl Game{
         for player in &self.players {
             if player.id == player_id {
                 hand = player.hand.clone();
-            }
-            else{
-                player_public_info.push(PlayerPublicInfo { id: player.id, name: player.name.clone() });
+            } else {
+                player_public_info.push(PlayerPublicInfo {
+                    id: player.id,
+                    name: player.name.clone(),
+                });
             }
         }
-        GameView { player_id, game_id: self.id.clone(), current_player_id: self.players[self.current_turn_index].id, center_stack_count: self.center_stack.len(), current_claim: self.current_claim, status: self.status.clone(), hand, players: player_public_info, max_players: self.max_players }
+        GameView {
+            player_id,
+            game_id: self.id.clone(),
+            current_player_id: self.players[self.current_turn_index].id,
+            center_stack_count: self.center_stack.len(),
+            current_claim: self.current_claim,
+            status: self.status.clone(),
+            hand,
+            players: player_public_info,
+            max_players: self.max_players,
+        }
     }
 }

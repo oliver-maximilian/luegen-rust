@@ -15,9 +15,7 @@ dashmap = "6.2.1"
 clap = { version = "4", features = ["derive"] }
 rust-embed = "8"
 mime_guess = "2"
-[[bin]]
-name = "luegen-rust"
-path = "main.rs"
+
 [profile.release]
 opt-level = 3
 lto = "fat"
