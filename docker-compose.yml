@@ -1,0 +1,39 @@
+name: luegen
+
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    image: luegen-backend:latest
+    container_name: luegen-backend
+    restart: unless-stopped
+    # Uncomment to expose the debug endpoint (/api/debug/game):
+    # command: ["--debug"]
+    expose:
+      - "3000"
+    networks:
+      - internal_net
+
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+    image: luegen-frontend:latest
+    container_name: luegen-frontend
+    restart: unless-stopped
+    depends_on:
+      - backend
+    expose:
+      - "80"
+    networks:
+      - external_net
+      - internal_net
+
+# Shared with nginx-proxy-manager on the host. Created outside this stack:
+#   docker network create npm_network   (already exists here)
+networks:
+  internal_net:
+  external_net:
+    external: true
+    name: overleaf_external_net

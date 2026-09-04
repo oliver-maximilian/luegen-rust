@@ -1,0 +1,27 @@
+# VCS / CI
+.git
+.github
+.gitignore
+
+# Rust build output
+target
+
+# Node
+node_modules
+frontend/node_modules
+frontend/dist
+
+# Docs / meta (not needed inside images)
+*.md
+
+# Docker / compose
+Dockerfile*
+docker-compose*.yml
+.dockerignore
+.env
+.env.*
+
+# Editor / misc
+.vscode
+.idea
+*.zip

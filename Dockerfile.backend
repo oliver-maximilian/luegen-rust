@@ -1,0 +1,45 @@
+# syntax=docker/dockerfile:1
+
+##########################################################################
+#  Build – Rust release binary (API only)
+##########################################################################
+FROM rust:1-bookworm AS build
+
+WORKDIR /app
+
+# rust-embed (#[folder = "frontend/dist/"]) reads this directory at compile
+# time. In this split deployment the SPA ships in the frontend image, so an
+# empty directory satisfies the macro and the backend serves the API only.
+RUN mkdir -p frontend/dist
+
+# Pre-compile dependencies against a stub so this layer caches across
+# source-only changes.
+COPY Cargo.toml Cargo.lock ./
+RUN mkdir -p src && echo 'fn main() {}' > src/main.rs && \
+    cargo build --release --locked && \
+    rm -rf src
+
+COPY src ./src
+RUN touch src/main.rs && cargo build --release --locked
+
+##########################################################################
+#  Runtime
+##########################################################################
+FROM debian:bookworm-slim AS runtime
+
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends curl && \
+    rm -rf /var/lib/apt/lists/* && \
+    useradd --system --uid 10001 --user-group luegen
+
+COPY --from=build /app/target/release/luegen-rust /usr/local/bin/luegen-rust
+
+USER luegen
+EXPOSE 3000
+
+# Server binds 0.0.0.0:3000; "/" answers (404 without an embedded SPA) once it is up.
+HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
+    CMD curl -s -o /dev/null http://127.0.0.1:3000/ || exit 1
+
+ENTRYPOINT ["luegen-rust"]
+# Append "--debug" here or via compose `command` to expose /api/debug/game.
