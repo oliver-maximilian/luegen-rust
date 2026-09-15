@@ -89,8 +89,9 @@ export async function fetchDebugGames() {
 }
 
 export function createGameSocket(session: SessionState) {
+  const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
   return new WebSocket(
-    `/api/game?game_id=${encodeURIComponent(session.gameId)}&player_id=${encodeURIComponent(session.playerId)}`,
+    `${protocol}//${window.location.host}/api/game?game_id=${encodeURIComponent(session.gameId)}&player_id=${encodeURIComponent(session.playerId)}`,
   );
 }
 
