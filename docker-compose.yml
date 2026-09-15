@@ -13,6 +13,7 @@ services:
     expose:
       - "3000"
     networks:
+      - external_net
       - internal_net
 
   frontend:
